@@ -219,7 +219,7 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
 # Create the MCP server with lifespan support
 mcp = FastMCP(
     "IsaacSimMCP",
-    description="Isaac Sim integration through the Model Context Protocol",
+    instructions="Isaac Sim integration through the Model Context Protocol",
     lifespan=server_lifespan
 )
 
@@ -265,7 +265,9 @@ def get_scene_info(ctx: Context) -> str:
     try:
         isaac = get_isaac_connection()
         result = isaac.send_command("get_scene_info")
-        print("result: ", result)
+        # IMPORTANT: do not print to stdout in an stdio MCP server.
+        # Any non-JSON output on stdout will corrupt the MCP transport.
+        logger.debug("get_scene_info result: %s", result)
         
         # Just return the JSON representation of what Isaac sent us
         return json.dumps(result, indent=2)
@@ -441,10 +443,12 @@ simulation_context.stop()
     try:
         # Get the global connection
         isaac = get_isaac_connection()
-        print("code: ", code)
+        # IMPORTANT: do not print to stdout in an stdio MCP server.
+        # Any non-JSON output on stdout will corrupt the MCP transport.
+        logger.debug("execute_script code: %s", code)
         
         result = isaac.send_command("execute_script", {"code": code})
-        print("result: ", result)
+        logger.debug("execute_script result: %s", result)
         return result
         # return f"Code executed successfully: {result.get('result', '')}"
     except Exception as e:
