@@ -275,8 +275,12 @@ def get_scene_info(ctx: Context) -> str:
         # return result
     except Exception as e:
         logger.error(f"Error getting scene info from Isaac: {str(e)}")
-        # return f"Error getting scene info: {str(e)}"
-        return {"status": "error", "error": str(e), "message": "Error getting scene info"}
+        error_payload = {
+            "status": "error",
+            "error": str(e),
+            "message": "Error getting scene info",
+        }
+        return json.dumps(error_payload, indent=2)
 
 # @mcp.tool()
 # def get_object_info(ctx: Context, object_name: str) -> str:
@@ -330,7 +334,7 @@ def create_physics_scene(
         isaac = get_isaac_connection()
         
         result = isaac.send_command("create_physics_scene", params)
-        return f"create_physics_scene successfully: {result.get('result', '')}, {result.get('message', '')}"
+        return result
     except Exception as e:
         logger.error(f"Error create_physics_scene: {str(e)}")
         # return f"Error create_physics_scene: {str(e)}"
@@ -377,8 +381,12 @@ def omni_kit_command(command: str = "CreatePrim", prim_type: str = "Sphere") -> 
         return f"Omni Kit command executed successfully: {result.get('message', '')}"
     except Exception as e:
         logger.error(f"Error executing Omni Kit command: {str(e)}")
-        # return f"Error executing Omni Kit command: {str(e)}"
-        return {"status": "error", "error": str(e), "message": "Error executing Omni Kit command"}
+        error_payload = {
+            "status": "error",
+            "error": str(e),
+            "message": "Error executing Omni Kit command",
+        }
+        return json.dumps(error_payload, indent=2)
 
 
 @mcp.tool()
@@ -449,12 +457,15 @@ simulation_context.stop()
         
         result = isaac.send_command("execute_script", {"code": code})
         logger.debug("execute_script result: %s", result)
-        return result
-        # return f"Code executed successfully: {result.get('result', '')}"
+        return json.dumps(result, indent=2)
     except Exception as e:
         logger.error(f"Error executing code: {str(e)}")
-        # return f"Error executing code: {str(e)}"
-        return {"status": "error", "error": str(e), "message": "Error executing code"}
+        error_payload = {
+            "status": "error",
+            "error": str(e),
+            "message": "Error executing code",
+        }
+        return json.dumps(error_payload, indent=2)
                 
 @mcp.prompt()
 def asset_creation_strategy() -> str:

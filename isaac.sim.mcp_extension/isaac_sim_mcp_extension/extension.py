@@ -386,49 +386,79 @@ class MCPExtension(omni.ext.IExt):
         from omni.isaac.core.utils.prims import create_prim
         from omni.isaac.core.utils.stage import add_reference_to_stage, is_stage_loading
         from omni.isaac.nucleus import get_assets_root_path
+        from pathlib import Path
+        from pxr import Sdf
         
 
         stage = omni.usd.get_context().get_stage()
         assets_root_path = get_assets_root_path()
         print("position: ", position)
+
+        # Repo-local robot USDs (offline workflow).
+        # This extension is typically loaded from the `automate_sprint` workspace, so we can
+        # locate `sim_assets/usd/...` relative to this file.
+        repo_root = Path(__file__).resolve().parents[3]
+        local_kuka_usd_dir = repo_root / "sim_assets" / "usd" / "kuka_iiwa7"
+
+        def _spawn_robot(known_name: str, asset_path: str, prim_path: str):
+            layer = Sdf.Layer.FindOrOpen(asset_path)
+            if layer is None:
+                return {
+                    "status": "error",
+                    "message": f"{known_name} asset is not reachable: {asset_path}"
+                }
+            add_reference_to_stage(asset_path, prim_path)
+            robot_prim = XFormPrim(prim_path=prim_path)
+            robot_prim.set_world_pose(position=np.array(position))
+            return {"status": "success", "message": f"{robot_type} robot created"}
         
         if robot_type.lower() == "franka":
             asset_path = assets_root_path + "/Isaac/Robots/Franka/franka_alt_fingers.usd"
-            add_reference_to_stage(asset_path, "/Franka")
-            robot_prim = XFormPrim(prim_path="/Franka")
-            robot_prim.set_world_pose(position=np.array(position))
-            return {"status": "success", "message": f"{robot_type} robot created"}
+            return _spawn_robot("Franka", asset_path, "/Franka")
         elif robot_type.lower() == "jetbot":
             asset_path = assets_root_path + "/Isaac/Robots/Jetbot/jetbot.usd"
-            add_reference_to_stage(asset_path, "/Jetbot")
-            robot_prim = XFormPrim(prim_path="/Jetbot")
-            robot_prim.set_world_pose(position=np.array(position))
-            return {"status": "success", "message": f"{robot_type} robot created"}
+            return _spawn_robot("Jetbot", asset_path, "/Jetbot")
         elif robot_type.lower() == "carter":
             asset_path = assets_root_path + "/Isaac/Robots/Carter/carter.usd"
-            add_reference_to_stage(asset_path, "/Carter")
-            robot_prim = XFormPrim(prim_path="/Carter")
-            robot_prim.set_world_pose(position=np.array(position))
-            return {"status": "success", "message": f"{robot_type} robot created"}
+            return _spawn_robot("Carter", asset_path, "/Carter")
         elif robot_type.lower() == "g1":
             asset_path = assets_root_path + "/Isaac/Robots/Unitree/G1/g1.usd"
-            add_reference_to_stage(asset_path, "/G1")
-            robot_prim = XFormPrim(prim_path="/G1")
-            robot_prim.set_world_pose(position=np.array(position))
-            return {"status": "success", "message": f"{robot_type} robot created"}
+            return _spawn_robot("Unitree G1", asset_path, "/G1")
         elif robot_type.lower() == "go1":
             asset_path = assets_root_path + "/Isaac/Robots/Unitree/Go1/go1.usd"
-            add_reference_to_stage(asset_path, "/Go1")
-            robot_prim = XFormPrim(prim_path="/Go1")
-            robot_prim.set_world_pose(position=np.array(position))
-            return {"status": "success", "message": f"{robot_type} robot created"}
+            return _spawn_robot("Unitree Go1", asset_path, "/Go1")
+        elif robot_type.lower() in ["kuka_green", "iiwa7_green", "iiwa_green"]:
+            asset_path = str(local_kuka_usd_dir / "kuka_green.usd")
+            return _spawn_robot("KUKA LBR iiwa 7 (kuka_green)", asset_path, "/KukaGreen")
+        elif robot_type.lower() in ["kuka_blue", "iiwa7_blue", "iiwa_blue"]:
+            asset_path = str(local_kuka_usd_dir / "kuka_blue.usd")
+            return _spawn_robot("KUKA LBR iiwa 7 (kuka_blue)", asset_path, "/KukaBlue")
+        elif robot_type.lower() in ["kuka_kr210", "kr210"]:
+            asset_path = assets_root_path + "/Isaac/Robots/Kuka/KR210_L150/kr210_l150.usd"
+            return _spawn_robot("Kuka KR210", asset_path, "/KukaKR210")
+        elif robot_type.lower() in [
+            "kuka",
+            "kuka_robot",
+            "iiwa",
+            "iiwa7",
+            "iiwa7r800",
+            "kuka_iiwa_7",
+            "kuka_lbr"
+        ]:
+            local_asset = local_kuka_usd_dir / "kuka_green.usd"
+            if local_asset.is_file():
+                asset_path = str(local_asset)
+                return _spawn_robot("KUKA LBR iiwa 7 (local)", asset_path, "/KukaIIWA7")
+            asset_path = assets_root_path + "/Isaac/Robots/KukaAllegro/kuka.usd"
+            return _spawn_robot("KUKA LBR iiwa 7 (cloud)", asset_path, "/KukaIIWA7")
         else:
-            # Default to Franka if unknown robot type
-            asset_path = assets_root_path + "/Isaac/Robots/Franka/franka_alt_fingers.usd"
-            add_reference_to_stage(asset_path, "/Franka")
-            robot_prim = XFormPrim(prim_path="/Franka")
-            robot_prim.set_world_pose(position=np.array(position))
-            return {"status": "success", "message": f"{robot_type} robot created"}
+            return {
+                "status": "error",
+                "message": (
+                    f"Unknown robot type: {robot_type}. "
+                    "Try: franka, jetbot, carter, g1, go1, kuka_green, kuka_blue, kuka, kuka_robot, kuka_kr210, kr210, iiwa, iiwa7, iiwa7r800, kuka_iiwa_7, kuka_lbr"
+                )
+            }
     
     def create_physics_scene(
             self,
